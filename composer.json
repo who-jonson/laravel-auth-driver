@@ -1,0 +1,65 @@
+{
+    "name": "who-jonson/laravel-file-auth-driver",
+    "description": "A Custom File Authentication Driver & Provider for Laravel 6 or greater.",
+    "keywords": ["laravel", "driver", "auth", "file", "provider", "guard"],
+    "homepage": "https://github.com/who-jonson/laravel-file-auth-driver",
+    "type": "package",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jonson B.",
+            "email": "www.jbc.bd@gmail.com",
+            "homepage": "https://who-jonson.github.io",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/who-jonson/laravel-file-auth-driver/issues",
+        "source": "https://github.com/who-jonson/laravel-file-auth-driver"
+    },
+    "require": {
+        "php": "^7.2 || ^8.0",
+        "composer/composer": "^1.6 || ^2.0",
+        "illuminate/config": "^6.0 || ^7.0 || ^8.0",
+        "illuminate/console": "^6.0 || ^7.0 || ^8.0",
+        "illuminate/filesystem": "^6.0 || ^7.0 || ^8.0",
+        "illuminate/support": "^6.0 || ^7.0 || ^8.0",
+        "phpdocumentor/type-resolver": "^1.1.0"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.3.3",
+        "orchestra/testbench": "^4.0 || ^5.0 || ^6.0",
+        "phpunit/phpunit": "^8.5 || ^9.0"
+    },
+    "suggest": {
+        "laravel/framework": "To test the Laravel bindings"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        },
+        "laravel": {
+            "providers": [
+                "WhoJonson\\LaravelFileAuth\\LaravelFileAuthProvider"
+            ]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "WhoJonson\\LaravelFileAuth\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WhoJonson\\Tests\\LaravelOrganizer\\": "tests/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "phpunit"
+    }
+}
