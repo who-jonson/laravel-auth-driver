@@ -1,8 +1,8 @@
 {
-    "name": "who-jonson/laravel-file-auth-driver",
-    "description": "A Custom File Authentication Driver & Provider for Laravel 6 or greater.",
+    "name": "who-jonson/laravel-auth-driver",
+    "description": "A Custom Authentication Driver & Provider for Laravel 6 or greater.",
     "keywords": ["laravel", "driver", "auth", "file", "provider", "guard"],
-    "homepage": "https://github.com/who-jonson/laravel-file-auth-driver",
+    "homepage": "https://github.com/who-jonson/laravel-auth-driver",
     "type": "package",
     "license": "MIT",
     "authors": [
@@ -14,11 +14,12 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/who-jonson/laravel-file-auth-driver/issues",
-        "source": "https://github.com/who-jonson/laravel-file-auth-driver"
+        "issues": "https://github.com/who-jonson/laravel-auth-driver/issues",
+        "source": "https://github.com/who-jonson/laravel-auth-driver"
     },
     "require": {
         "php": "^7.2 || ^8.0",
+        "ext-json": "*",
         "composer/composer": "^1.6 || ^2.0",
         "illuminate/config": "^6.0 || ^7.0 || ^8.0",
         "illuminate/console": "^6.0 || ^7.0 || ^8.0",
@@ -43,18 +44,18 @@
         },
         "laravel": {
             "providers": [
-                "WhoJonson\\LaravelFileAuth\\LaravelFileAuthProvider"
+                "WhoJonson\\LaravelAuth\\ServiceProvider"
             ]
         }
     },
     "autoload": {
         "psr-4": {
-            "WhoJonson\\LaravelFileAuth\\": "src/"
+            "WhoJonson\\LaravelAuth\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "WhoJonson\\Tests\\LaravelOrganizer\\": "tests/"
+            "WhoJonson\\Tests\\LaravelAuth\\": "tests/"
         }
     },
     "minimum-stability": "dev",
