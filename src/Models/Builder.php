@@ -12,7 +12,7 @@ class Builder extends Collection
     /**
      * @var Model
      */
-    protected $model;
+    public $model;
 
     /**
      * Create a new Builder.
@@ -27,11 +27,27 @@ class Builder extends Collection
     }
 
     /**
+     * @param Model $model
+     */
+    public function setModel(Model $model): void
+    {
+        $this->model = $model;
+    }
+
+    /**
+     * @param array $items
+     */
+    public function setItems(array $items = []): void
+    {
+        $this->items = $this->getArrayableItems($items);
+    }
+
+    /**
      * @param callable|null $callback
      * @param null $default
-     * @return Model|null
+     * @return Model|mixed|null
      */
-    public function first(callable $callback = null, $default = null): ?Model
+    public function first(callable $callback = null, $default = null)
     {
         $data = parent::first($callback, $default);
         if(!$data) {

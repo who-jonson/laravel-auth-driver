@@ -1,13 +1,12 @@
 <?php
 
 
-namespace WhoJonson\LaravelAuth\Traits;
+namespace WhoJonson\LaravelAuth\Models;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\Access\Authorizable as AuthorizableTrait;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use WhoJonson\LaravelAuth\Traits\Authenticatable as AuthenticatableTrait;
-use WhoJonson\LaravelAuth\Models\Model;
 
 class FileUser extends Model implements
     Authenticatable,

@@ -4,58 +4,110 @@
 namespace WhoJonson\LaravelAuth\Providers;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use WhoJonson\LaravelAuth\Traits\FileUser;
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Support\Str;
+use WhoJonson\LaravelAuth\Exceptions\LaravelAuthException;
+use WhoJonson\LaravelAuth\Contracts\Model;
+use WhoJonson\LaravelAuth\Models\FileUser;
 
 class FileUserProvider extends UserProvider
 {
     /**
      * Retrieve a user by their unique identifier.
      *
-     * @param  mixed  $identifier
-     * @return Authenticatable|null
+     * @param mixed $identifier
+     * @return Authenticatable|Model|null
      */
     public function retrieveById($identifier): ?Authenticatable
     {
-        return FileUser::find($identifier);
+        $model = $this->createModel();
+
+        return $this->newModelQuery($model)
+            ->where($model->getAuthIdentifierName(), '=', $identifier)
+            ->first();
     }
 
     /**
      * Retrieve a user by their unique identifier and "remember me" token.
      *
-     * @param  mixed  $identifier
-     * @param  string  $token
-     * @return Authenticatable|null
+     * @param mixed $identifier
+     * @param string $token
+     * @return Authenticatable|Model|null
      */
-    public function retrieveByToken($identifier, $token): ?Authenticatable
+    public function retrieveByToken($identifier, $token)
     {
+        $model = $this->createModel();
 
+        $retrievedModel = $this->newModelQuery($model)->where(
+            $model->getAuthIdentifierName(), '=', $identifier
+        )->first();
+
+        if (! $retrievedModel) {
+            return null;
+        }
+
+        $rememberToken = $retrievedModel->getRememberToken();
+
+        return $rememberToken && hash_equals($rememberToken, $token)
+            ? $retrievedModel : null;
     }
 
     /**
-     * @inheritDoc
+     * Update the "remember me" token for the given user in storage.
+     *
+     * @param Authenticatable|Model $user
+     * @param string $token
+     * @return void
+     *
+     * @throws LaravelAuthException
      */
-    public function updateRememberToken(Authenticatable $user, $token) {
-
+    public function updateRememberToken($user, $token) {
+        $user->setRememberToken($token);
+        $user->save();
     }
 
     /**
-     * @inheritDoc
+     * Retrieve a user by the given credentials.
+     *
+     * @param array $credentials
+     * @return Authenticatable|Model|null
      */
-    public function retrieveByCredentials(array $credentials): ?Authenticatable
+    public function retrieveByCredentials(array $credentials)
     {
-        $builder = FileUser::query();
+        if (empty($credentials) ||
+            (count($credentials) === 1 &&
+                Str::contains(array_key_first($credentials), 'password'))) {
+            return null;
+        }
+        $query = $this->newModelQuery();
+
         foreach ($credentials as $key => $value) {
-            if (!str_contains($key, 'password')) {
-                $builder = $builder->where($key, '=', $value);
+            if (Str::contains($key, 'password')) {
+                continue;
+            }
+
+            if (is_array($value) || $value instanceof Arrayable) {
+                $query = $query->whereIn($key, $value);
+            } else {
+                $query = $query->where($key, '=', $value);
             }
         }
+
+        return $query->values()->first();
     }
 
     /**
-     * @inheritDoc
+     * Validate a user against the given credentials.
+     *
+     * @param Authenticatable $user
+     * @param  array  $credentials
+     *
+     * @return bool
      */
     public function validateCredentials(Authenticatable $user, array $credentials): bool
     {
+        $plain = $credentials['password'];
 
+        return $this->hash->check($plain, $user->getAuthPassword());
     }
 }

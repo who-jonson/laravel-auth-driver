@@ -6,20 +6,6 @@ namespace WhoJonson\LaravelAuth\Traits;
 trait Authenticatable
 {
     /**
-     * The column name of the "remember me" token.
-     *
-     * @var string
-     */
-    protected $rememberTokenName = 'remember_token';
-
-    /**
-     * The key name of the "password"
-     *
-     * @var string
-     */
-    protected $passwordKey = 'password';
-
-    /**
      * Get the name of the unique identifier for the user.
      *
      * @return string

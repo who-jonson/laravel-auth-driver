@@ -3,8 +3,10 @@
 
 namespace WhoJonson\LaravelAuth\Models;
 
+use Carbon\Carbon;
 use Exception;
 use BadMethodCallException;
+use Illuminate\Filesystem\Filesystem;
 use WhoJonson\LaravelAuth\Contracts\Model as AuthModel;
 use WhoJonson\LaravelAuth\Exceptions\DuplicateUniqueException;
 use WhoJonson\LaravelAuth\Exceptions\FileSystemException;
@@ -20,6 +22,13 @@ use WhoJonson\LaravelAuth\Traits\QueryBuilder;
 abstract class Model implements AuthModel
 {
     use QueryBuilder;
+
+    /**
+     * The user model.
+     *
+     * @var Filesystem
+     */
+    protected $files;
 
     /**
      * File name where data are being stored
@@ -92,6 +101,20 @@ abstract class Model implements AuthModel
     protected $mandatory = ['name', 'email'];
 
     /**
+     * The column name of the "remember me" token.
+     *
+     * @var string
+     */
+    protected $rememberTokenName = 'remember_token';
+
+    /**
+     * The key name of the "password"
+     *
+     * @var string
+     */
+    protected $passwordKey = 'password';
+
+    /**
      * Create a new Model object.
      *
      * @param array $attributes
@@ -99,6 +122,24 @@ abstract class Model implements AuthModel
     public function __construct(array $attributes = [])
     {
         $this->setAttributes($attributes);
+    }
+
+    /**
+     * @return Filesystem
+     */
+    public function getFiles(): Filesystem
+    {
+        return $this->files;
+    }
+
+    /**
+     * @param Filesystem $files
+     * @return Model
+     */
+    public function setFiles(Filesystem $files): Model
+    {
+        $this->files = $files;
+        return $this;
     }
 
     /**
@@ -170,7 +211,7 @@ abstract class Model implements AuthModel
      * @param $arguments
      *
      * @return bool
-     * @throws UndefinedFileNameException
+     * @throws LaravelAuthException
      */
     public function __call($method, $arguments) : bool
     {
@@ -235,7 +276,7 @@ abstract class Model implements AuthModel
     {
         $dir = (string) (config('auth-driver.file.directory') ?? storage_path('app/auth-db'));
 
-        return $dir . '/' . (new static)->fileName . '.authm';
+        return get_absolute_path($dir . '/' . (new static)->fileName . '.txt');
     }
 
     /**
@@ -243,16 +284,15 @@ abstract class Model implements AuthModel
      */
     protected static function getData(): array
     {
-        $arr = [];
         $file = static::getFilePath();
         if(!file_exists($file)) {
-            $arr = [];
+            return [];
         }
         $data = file_get_contents($file);
         if($data && strlen($data) > 0) {
-            $arr = json_decode($data, false, 512, JSON_BIGINT_AS_STRING);
+            return json_decode($data, false, 512, JSON_BIGINT_AS_STRING);
         }
-        return $arr;
+        return [];
     }
 
     /**
@@ -360,7 +400,7 @@ abstract class Model implements AuthModel
                 return $val[$key] == $value && $val[$idKey] != $ignore;
             });
         }
-        return false;
+        return true;
     }
 
     /**
@@ -400,8 +440,14 @@ abstract class Model implements AuthModel
             if(in_array($key, $uniqueKeys) && !$this->checkIfUniqueValue($key, $value, $id)) {
                 throw new DuplicateUniqueException($key);
             }
-        }
 
+            if($key =='created_at' && !$value) {
+                $this->setAttribute($key, Carbon::now()->toDateTimeString());
+            }
+            if($key =='updated_at') {
+                $this->setAttribute($key, Carbon::now()->toDateTimeString());
+            }
+        }
         static::updateFile($this->attributes);
     }
 
@@ -412,7 +458,10 @@ abstract class Model implements AuthModel
      */
     protected static function storeData(array $data) {
         try {
-            file_put_contents(static::getFilePath(), json_encode($data));
+            $fp = fopen(static::getFilePath(), 'wb');
+            fwrite($fp, json_encode($data));
+            fclose($fp);
+            // file_put_contents(static::getFilePath(), json_encode($data));
         } catch (Exception $exception) {
             throw new FileSystemException($exception->getMessage(), $exception->getCode());
         }

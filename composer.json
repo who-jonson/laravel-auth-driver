@@ -51,7 +51,10 @@
     "autoload": {
         "psr-4": {
             "WhoJonson\\LaravelAuth\\": "src/"
-        }
+        },
+        "files": [
+            "src/Helpers/functions.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
