@@ -1,26 +1,26 @@
 <?php
 
 
-namespace WhoJonson\LaravelAuth\Models;
-
+namespace WhoJonson\LaravelAuth\Support;
 
 use Illuminate\Support\Collection;
+use WhoJonson\LaravelAuth\Abstracts\Model;
 
 class Builder extends Collection
 {
 
     /**
-     * @var Model
+     * @var string
      */
     public $model;
 
     /**
      * Create a new Builder.
      *
-     * @param Model $model
+     * @param string $model
      * @param mixed $items
      */
-    public function __construct(Model $model, $items = [])
+    public function __construct(string $model, $items = [])
     {
         parent::__construct($items);
         $this->model = $model;
@@ -36,10 +36,12 @@ class Builder extends Collection
 
     /**
      * @param array $items
+     * @return Builder
      */
-    public function setItems(array $items = []): void
+    public function setItems(array $items = []): Builder
     {
         $this->items = $this->getArrayableItems($items);
+        return $this;
     }
 
     /**
@@ -84,20 +86,19 @@ class Builder extends Collection
             return null;
         }
 
-        $self = $this;
         $models = new Collection();
-        $this->each(function ($item) use ($self, $models) {
-            $models->push($self->convertToModel($item));
-        });
+        foreach ($this->items as $value) {
+            $models->push($this->convertToModel($value));
+        }
         return $models;
     }
 
     /**
-     * @param array $data
+     * @param array|object $data
      * @return Model
      */
-    protected function convertToModel(array $data): Model
+    protected function convertToModel($data): Model
     {
-        return $this->model->newInstance()->setOriginals($data)->setAttributes($data);
+        return new $this->model((array) $data);
     }
 }

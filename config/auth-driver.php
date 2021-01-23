@@ -8,6 +8,6 @@ return [
         /**
          * The directory path where the file for Users should be stored
          */
-        'directory'  => storage_path('app/auth-db')
+        'directory'  => storage_path('app/db')
     ]
 ];

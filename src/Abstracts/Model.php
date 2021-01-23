@@ -1,34 +1,29 @@
 <?php
 
 
-namespace WhoJonson\LaravelAuth\Models;
+namespace WhoJonson\LaravelAuth\Abstracts;
 
-use Carbon\Carbon;
+
 use Exception;
+use Carbon\Carbon;
 use BadMethodCallException;
-use Illuminate\Filesystem\Filesystem;
-use WhoJonson\LaravelAuth\Contracts\Model as AuthModel;
+use Illuminate\Support\Str;
+use WhoJonson\LaravelAuth\Contracts\Model as ModelContract;
 use WhoJonson\LaravelAuth\Exceptions\DuplicateUniqueException;
 use WhoJonson\LaravelAuth\Exceptions\FileSystemException;
 use WhoJonson\LaravelAuth\Exceptions\LaravelAuthException;
 use WhoJonson\LaravelAuth\Exceptions\NotNullViolationException;
-use WhoJonson\LaravelAuth\Exceptions\UndefinedFileNameException;
+use WhoJonson\LaravelAuth\Support\Builder;
+use WhoJonson\LaravelAuth\Traits\HasAttributes;
 use WhoJonson\LaravelAuth\Traits\QueryBuilder;
 
 /**
  * Class Model
  * @package WhoJonson\LaravelAuth\Models
  */
-abstract class Model implements AuthModel
+abstract class Model implements ModelContract
 {
-    use QueryBuilder;
-
-    /**
-     * The user model.
-     *
-     * @var Filesystem
-     */
-    protected $files;
+    use HasAttributes, QueryBuilder;
 
     /**
      * File name where data are being stored
@@ -121,44 +116,19 @@ abstract class Model implements AuthModel
      */
     public function __construct(array $attributes = [])
     {
-        $this->setAttributes($attributes);
+        $this->setUp($attributes);
     }
 
     /**
-     * @return Filesystem
+     * @param array $attributes
      */
-    public function getFiles(): Filesystem
-    {
-        return $this->files;
-    }
-
-    /**
-     * @param Filesystem $files
-     * @return Model
-     */
-    public function setFiles(Filesystem $files): Model
-    {
-        $this->files = $files;
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public static function create(array $data): Model
-    {
-        $model = static::instance()->setAttributes($data);
-        $model->storeModel();
-
-        return $model;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public static function delete($id): bool
-    {
-        return false;
+    private function setUp(array $attributes) {
+        foreach ($this->keys as $key) {
+            if(!array_key_exists($key, $attributes)) {
+                $attributes[$key] = null;
+            }
+        }
+        $this->setOriginals($attributes)->setAttributes($attributes);
     }
 
     /**
@@ -211,62 +181,27 @@ abstract class Model implements AuthModel
      * @param $arguments
      *
      * @return bool
-     * @throws LaravelAuthException
+     * @throws BadMethodCallException
      */
     public function __call($method, $arguments) : bool
     {
         if(method_exists($this, $method)) {
-            $this->checkForFileName();
             return call_user_func_array([$this, $method], $arguments);
-        } else {
-            throw new BadMethodCallException();
         }
+        throw new BadMethodCallException();
     }
 
     /**
-     * @throws LaravelAuthException
+     * Get the file name for store
+     *
+     * @return string
      */
-    protected function checkForFileName() {
+    protected function getFileName(): string
+    {
         if(!$this->fileName) {
-            throw new UndefinedFileNameException();
+            return Str::snake(Str::pluralStudly(class_basename($this)));
         }
-    }
-
-    /**
-     * Set a given attribute on the model.
-     *
-     * @param string $key
-     * @param mixed $value
-     * @return void
-     */
-    public function setAttribute(string $key, $value) {
-        if(!in_array($key, $this->keys)) {
-            return;
-        }
-        if($key == $this->primaryKey) {
-            $this->setPrimaryKey($value);
-        } else {
-            $this->attributes[$key] = $value;
-        }
-    }
-
-    /**
-     * Get an attribute from the model.
-     *
-     * @param string $key
-     * @return mixed|void
-     */
-    public function getAttribute(string $key) {
-        if(!$key || !in_array($key, $this->keys)) {
-            return;
-        }
-        if (method_exists(self::class, $key)) {
-            return;
-        }
-
-        return array_key_exists($key, $this->attributes)
-            ? $this->attributes[$key]
-            : null;
+        return $this->fileName;
     }
 
     /**
@@ -274,25 +209,9 @@ abstract class Model implements AuthModel
      */
     protected static function getFilePath(): string
     {
-        $dir = (string) (config('auth-driver.file.directory') ?? storage_path('app/auth-db'));
+        $dir = (string) (config('auth-driver.file.directory') ?? storage_path('app/db'));
 
-        return get_absolute_path($dir . '/' . (new static)->fileName . '.txt');
-    }
-
-    /**
-     * @return array
-     */
-    protected static function getData(): array
-    {
-        $file = static::getFilePath();
-        if(!file_exists($file)) {
-            return [];
-        }
-        $data = file_get_contents($file);
-        if($data && strlen($data) > 0) {
-            return json_decode($data, false, 512, JSON_BIGINT_AS_STRING);
-        }
-        return [];
+        return get_absolute_path($dir . '/' . (new static)->getFileName() . '.usr');
     }
 
     /**
@@ -308,10 +227,12 @@ abstract class Model implements AuthModel
 
     /**
      * new static instance the model.
+     * @param array $attributes
+     * @return Model
      */
-    public static function instance(): Model
+    public static function instance(array $attributes = []): Model
     {
-        return (new static)->newInstance();
+        return (new static)->newInstance($attributes);
     }
 
     /**
@@ -331,7 +252,7 @@ abstract class Model implements AuthModel
      */
     public function newQuery(): Builder
     {
-        return new Builder(static::instance(), static::getData());
+        return new Builder(static::class, static::getData());
     }
 
     /**
@@ -351,36 +272,6 @@ abstract class Model implements AuthModel
     }
 
     /**
-     * Set the array of model attributes
-     *
-     * @param  array  $attributes
-     * @return $this
-     */
-    public function setAttributes(array $attributes): Model
-    {
-        foreach ($attributes as $key => $value) {
-            $this->setAttribute($key, $value);
-        }
-        return $this;
-    }
-
-    /**
-     * Set the array of model attributes(original from store)
-     *
-     * @param  array  $attributes
-     * @return $this
-     */
-    public function setOriginals(array $attributes): Model
-    {
-        foreach ($attributes as $key => $value) {
-            if(in_array($key, $this->keys)) {
-                $this->originals[$key] = $value;
-            }
-        }
-        return $this;
-    }
-
-    /**
      * @param string $key
      * @param mixed $value
      * @param string|int|null $ignore
@@ -389,18 +280,15 @@ abstract class Model implements AuthModel
      */
     protected function checkIfUniqueValue(string $key, $value, $ignore = null): bool
     {
-        $data = $this->newQuery();
-        if($data->count() > 0) {
-            if(!$ignore) {
-                return !$data->contains($key, '=', $value);
-            }
+        $ignore = $ignore ?? $this->getAttribute($this->primaryKey);
 
-            $idKey = $this->primaryKey;
-            return !$data->contains(function ($val) use ($key, $value, $ignore, $idKey) {
-                return $val[$key] == $value && $val[$idKey] != $ignore;
-            });
+        if($key == $this->primaryKey) {
+            $data = static::findData($ignore);
+        } else {
+            $data = static::findDataByKeyValue($key, $value, $ignore);
         }
-        return true;
+
+        return $data ? false : true;
     }
 
     /**
@@ -409,14 +297,7 @@ abstract class Model implements AuthModel
     public function save(): bool
     {
         try {
-            if(isset($this->originals[$this->primaryKey]) && $this->originals[$this->primaryKey]) {
-                $this->storeModel($this->originals[$this->primaryKey]);
-            } else {
-                if(!$this->getAttribute($this->primaryKey)) {
-                    $this->setPrimaryKey();
-                }
-                $this->storeModel();
-            }
+            $this->storeModel();
             return true;
         } catch (LaravelAuthException $e) {
             throw $e;
@@ -425,23 +306,35 @@ abstract class Model implements AuthModel
 
     /**
      *
-     * @param string|int|null $id
      * @throws LaravelAuthException
      */
-    protected function storeModel($id = null) {
-        $uniqueKeys = $this->getUniqueKeys();
+    protected function storeModel() {
+        $exists = static::findData($this->getOriginal($this->primaryKey));
 
-        foreach ($this->attributes as $key => $value) {
+        foreach ($this->getAttributes() as $key => $value) {
             // Check if null value for a mandatory field
             if(!$value && in_array($key, $this->getMandatoryKeys())) {
                 throw new NotNullViolationException($key);
             }
             // Check for unique field
-            if(in_array($key, $uniqueKeys) && !$this->checkIfUniqueValue($key, $value, $id)) {
-                throw new DuplicateUniqueException($key);
+            if(in_array($key, $this->getUniqueKeys())) {
+                $duplicate = false;
+                if($exists) {
+                    if($key == $this->primaryKey) {
+                        continue;
+                    }
+                    if(!$this->checkIfUniqueValue($key, $value, $exists[$this->primaryKey])) {
+                        $duplicate = true;
+                    }
+                } elseif(!$this->checkIfUniqueValue($key, $value)) {
+                    $duplicate = true;
+                }
+                if($duplicate) {
+                    throw new DuplicateUniqueException($key);
+                }
             }
 
-            if($key =='created_at' && !$value) {
+            if($key == 'created_at' && !$value) {
                 $this->setAttribute($key, Carbon::now()->toDateTimeString());
             }
             if($key =='updated_at') {
@@ -458,23 +351,10 @@ abstract class Model implements AuthModel
      */
     protected static function storeData(array $data) {
         try {
-            $fp = fopen(static::getFilePath(), 'wb');
-            fwrite($fp, json_encode($data));
-            fclose($fp);
-            // file_put_contents(static::getFilePath(), json_encode($data));
+            file_put_contents(static::getFilePath(), json_encode($data));
         } catch (Exception $exception) {
             throw new FileSystemException($exception->getMessage(), $exception->getCode());
         }
-    }
-
-    /**
-     * @param string|int|null
-     */
-    protected function setPrimaryKey($id = null) {
-        if ($this->primaryKeyType == 'int' && $this->incrementing) {
-            $id = ((int) $this->newQuery()->max($this->primaryKey)) + 1;
-        }
-        $this->attributes[$this->primaryKey] = $id;
     }
 
     /**
@@ -485,19 +365,80 @@ abstract class Model implements AuthModel
         $data = static::getData();
         $primaryKey = (new static)->primaryKey;
 
-        $exists = array_filter($data, function ($item) use ($primaryKey, $attributes) {
-            return $item[$primaryKey] == $attributes[$primaryKey];
-        });
-        if(count($exists) > 0) {
-            $index = array_key_first($exists);
+        $index = $attributes[$primaryKey];
+        if(array_key_exists($index, $data)) {
             foreach ($attributes as $k => $v) {
                 if($k != $primaryKey) {
                     $data[$index][$k] = $v;
                 }
             }
         } else {
-            array_push($data, $attributes);
+            $data[$index] = $attributes;
         }
         static::storeData($data);
+    }
+
+    public function delete(): bool
+    {
+        $data = static::getData();
+        unset($data[$this->primaryKey]);
+        return true;
+    }
+
+    public function toArray(): array
+    {
+        return (array) $this->getAttributes();
+    }
+
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
+    /**
+     * @return array
+     */
+    protected static function getData(): array
+    {
+        $file = static::getFilePath();
+        if(!file_exists($file)) {
+            return [];
+        }
+        $data = file_get_contents($file);
+        if($data && strlen($data) > 0) {
+            return json_decode($data, true, 512, JSON_BIGINT_AS_STRING);
+        }
+        return [];
+    }
+
+    /**
+     * @param string|int $identifier
+     *
+     * @return array|null
+     */
+    protected static function findData($identifier) : ?array
+    {
+        $data = static::getData();
+        if(count($data) > 0 && array_key_exists($identifier, $data)) {
+            return $data[$identifier];
+        }
+        return null;
+    }
+
+    protected static function findDataByKeyValue(string $key, $value, $ignore = null): ?array
+    {
+        $data = static::getData();
+        if(count($data) > 0) {
+            foreach ($data as $index => $item) {
+                if($ignore && $index == $ignore) {
+                    continue;
+                }
+                if($item[$key] == $value) {
+                    return $item;
+                }
+            }
+        }
+
+        return null;
     }
 }

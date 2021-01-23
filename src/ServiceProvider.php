@@ -48,7 +48,12 @@ class ServiceProvider extends BaseServiceProvider
      */
     private function bootAuthProviders() {
         Auth::provider('file', function ($app, array $config) {
-            return new FileUserProvider($app['files'], $app['hash'], $config);
+            $path = $app['config']->get('auth-driver.file.directory');
+            if(!is_dir($path)) {
+                mkdir($path);
+            }
+
+            return new FileUserProvider($app['hash'], $config);
         });
     }
 }

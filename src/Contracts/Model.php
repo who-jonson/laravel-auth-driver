@@ -4,35 +4,35 @@
 namespace WhoJonson\LaravelAuth\Contracts;
 
 use Illuminate\Support\Collection;
+use WhoJonson\LaravelAuth\Abstracts\Model as AuthModel;
 use Illuminate\Contracts\Auth\Authenticatable;
 use WhoJonson\LaravelAuth\Exceptions\LaravelAuthException;
-use WhoJonson\LaravelAuth\Exceptions\ModelNotFoundException;
 
 interface Model
 {
     /**
-     * @return \WhoJonson\LaravelAuth\Models\Model[]|Authenticatable[]|Collection|null
+     * @return AuthModel[]|Authenticatable[]|Collection|null
      */
     public static function all();
 
     /**
      * @param string|int $id
-     * @return \WhoJonson\LaravelAuth\Models\Model|Authenticatable|null
+     * @return AuthModel|Authenticatable|null
      */
     public static function find($id);
 
     /**
      * @param string|int $id
-     * @return \WhoJonson\LaravelAuth\Models\Model|Authenticatable|null
+     * @return AuthModel|Authenticatable|null
      *
-     * @throws ModelNotFoundException
+     * @throws LaravelAuthException
      */
     public static function findOrFail($id);
 
     /**
      * @param array $data
      *
-     * @return \WhoJonson\LaravelAuth\Models\Model|Authenticatable
+     * @return AuthModel|Authenticatable
      *
      * @throws LaravelAuthException
      */
@@ -42,7 +42,7 @@ interface Model
      * @param string|int $id
      * @param array $data
      *
-     * @return \WhoJonson\LaravelAuth\Models\Model|Authenticatable|bool|mixed
+     * @return AuthModel|Authenticatable|bool|null
      *
      * @throws LaravelAuthException
      */
@@ -52,7 +52,7 @@ interface Model
      * @param $id
      * @return bool
      */
-    public static function delete($id);
+    public static function destroy($id);
 
     /**
      * @return bool
@@ -62,7 +62,12 @@ interface Model
     public function save();
 
     /**
-     * @return \WhoJonson\LaravelAuth\Models\Model|Authenticatable
+     * @return bool
+     */
+    public function delete();
+
+    /**
+     * @return AuthModel|Authenticatable
      */
     public function refresh();
 }

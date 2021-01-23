@@ -6,9 +6,8 @@ namespace WhoJonson\LaravelAuth\Providers;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\UserProvider as BaseUserProvider;
 use Illuminate\Contracts\Hashing\Hasher;
-use Illuminate\Filesystem\Filesystem;
-use WhoJonson\LaravelAuth\Models\Builder;
-use WhoJonson\LaravelAuth\Models\Model;
+use WhoJonson\LaravelAuth\Support\Builder;
+use WhoJonson\LaravelAuth\Abstracts\Model;
 
 /**
  * Class UserProvider
@@ -24,13 +23,6 @@ abstract class UserProvider implements BaseUserProvider
     protected $model;
 
     /**
-     * The user model.
-     *
-     * @var Filesystem
-     */
-    protected $files;
-
-    /**
      * @var array
      */
     protected $config;
@@ -43,17 +35,13 @@ abstract class UserProvider implements BaseUserProvider
     /**
      * UserProvider constructor.
      *
-     * @param Filesystem $files
      * @param Hasher $hash
      * @param array $config
      */
-    public function __construct(Filesystem $files, Hasher $hash, array $config)
+    public function __construct(Hasher $hash, array $config)
     {
-        $this->files = $files;
         $this->hash = $hash;
         $this->config = $config;
-
-        $this->setModel($this->config['model']);
     }
 
     /**
@@ -63,9 +51,9 @@ abstract class UserProvider implements BaseUserProvider
      */
     public function createModel(): Model
     {
-        $class = '\\'.ltrim($this->model, '\\');
+        $class = $this->getModelClass();
 
-        return (new $class)->setFiles($this->getFiles());
+        return new $class;
     }
 
     /**
@@ -107,29 +95,8 @@ abstract class UserProvider implements BaseUserProvider
      *
      * @return string
      */
-    public function getModel(): string
+    public function getModelClass(): string
     {
-        return '\\'.ltrim($this->model, '\\');
-    }
-
-    /**
-     * Sets the name of the Eloquent user model.
-     *
-     * @param string $model
-     * @return $this
-     */
-    public function setModel(string $model): UserProvider
-    {
-        $this->model = $model;
-
-        return $this;
-    }
-
-    /**
-     * @return Filesystem
-     */
-    public function getFiles(): Filesystem
-    {
-        return $this->files;
+        return '\\'.ltrim($this->config['model'], '\\');
     }
 }

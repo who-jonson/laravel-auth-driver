@@ -4,10 +4,12 @@
 namespace WhoJonson\LaravelAuth\Traits;
 
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
-use WhoJonson\LaravelAuth\Contracts\Model;
+use WhoJonson\LaravelAuth\Abstracts\Model;
+use WhoJonson\LaravelAuth\Exceptions\LaravelAuthException;
 use WhoJonson\LaravelAuth\Exceptions\ModelNotFoundException;
-use WhoJonson\LaravelAuth\Models\Builder;
+use WhoJonson\LaravelAuth\Support\Builder;
 
 trait QueryBuilder
 {
@@ -31,36 +33,42 @@ trait QueryBuilder
         if(!$data || $data->count() <= 0) {
             return null;
         }
-
-        $self = static::instance();
-        $models = new Collection();
-        $data->each(function ($item) use ($self, $models) {
-            $models->push($self->newInstance()->setOriginals($item)->setAttributes($item));
-        });
-        return $models;
+        return $data->get();
     }
 
     /**
-     * @inheritDoc
+     * @param string|int $id
+     * @return Model|Authenticatable|null
      */
     public static function find($id)
     {
-        return static::query()->firstWhere((new static)->primaryKey, '=', $id);
+        if($data = static::findData($id)) {
+            return static::instance($data);
+        }
+        return null;
     }
 
     /**
-     * @inheritDoc
+     * @param string|int $id
+     * @return Model|Authenticatable|null
+     *
+     * @throws LaravelAuthException
      */
     public static function findOrFail($id)
     {
         if($model = static::find($id)) {
             return $model;
         }
-        throw new ModelNotFoundException(get_class(static::instance()));
+        throw new ModelNotFoundException(static::class);
     }
 
     /**
-     * @inheritDoc
+     * @param string|int $id
+     * @param array $data
+     *
+     * @return Model|Authenticatable|bool|null
+     *
+     * @throws LaravelAuthException
      */
     public static function update($id, array $data)
     {
@@ -72,15 +80,38 @@ trait QueryBuilder
                 }
                 $model->setAttribute($key, $value);
             }
-            return $model->save() ? $model : false;
+
+            return $model->save() ? $model->refresh() : false;
         }
-        throw new ModelNotFoundException(static::instance());
+        throw new ModelNotFoundException(static::class);
+    }
+
+    /**
+     * @return Model|Authenticatable
+     */
+    public function refresh() {
+        return static::find($this->getAttribute($this->primaryKey));
     }
 
     /**
      * @inheritDoc
      */
-    public function refresh() {
-        return static::find($this->primaryKey);
+    public static function create(array $data)
+    {
+        $model = static::instance($data);
+        $model->save();
+
+        return $model;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public static function destroy($id): bool
+    {
+        if($model = static::find($id)) {
+            return $model->delete();
+        }
+        return false;
     }
 }

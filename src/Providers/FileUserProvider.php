@@ -3,12 +3,11 @@
 
 namespace WhoJonson\LaravelAuth\Providers;
 
+use Illuminate\Support\Str;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Support\Str;
 use WhoJonson\LaravelAuth\Exceptions\LaravelAuthException;
 use WhoJonson\LaravelAuth\Contracts\Model;
-use WhoJonson\LaravelAuth\Models\FileUser;
 
 class FileUserProvider extends UserProvider
 {
@@ -20,11 +19,9 @@ class FileUserProvider extends UserProvider
      */
     public function retrieveById($identifier): ?Authenticatable
     {
-        $model = $this->createModel();
+        $class = $this->getModelClass();
 
-        return $this->newModelQuery($model)
-            ->where($model->getAuthIdentifierName(), '=', $identifier)
-            ->first();
+        return $class::find($identifier);
     }
 
     /**
@@ -36,20 +33,13 @@ class FileUserProvider extends UserProvider
      */
     public function retrieveByToken($identifier, $token)
     {
-        $model = $this->createModel();
+        $model = $this->retrieveById($identifier);
 
-        $retrievedModel = $this->newModelQuery($model)->where(
-            $model->getAuthIdentifierName(), '=', $identifier
-        )->first();
-
-        if (! $retrievedModel) {
+        if (!$model) {
             return null;
         }
 
-        $rememberToken = $retrievedModel->getRememberToken();
-
-        return $rememberToken && hash_equals($rememberToken, $token)
-            ? $retrievedModel : null;
+        return hash_equals($model->getRememberToken(), $token) ? $model : null;
     }
 
     /**
